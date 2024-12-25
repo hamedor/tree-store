@@ -1,15 +1,21 @@
 <template>
-  <div class="ag-theme-alpine" style="width: 100%; height: 600px;">
-    <ag-grid-vue
-        :columnDefs="columnDefs"
-        :defaultColDef="defaultColDef"
-        :rowData="rowData"
-        :treeData="true"
-        :getDataPath="getDataPath"
-        :groupDefaultExpanded="0"
-        :suppressAutoColumn="true"
-        :gridOptions="gridOptions"
-    />
+  <div>
+    <button @click="toggleEditMode">
+      {{ isEditMode ? 'Режим: редактирование' : 'Режим: просмотр' }}
+    </button>
+    <div class="ag-theme-alpine" style="width: 100%; height: 600px;">
+      <ag-grid-vue
+          @grid-ready="onGridReady"
+          :columnDefs="columnDefs"
+          :defaultColDef="defaultColDef"
+          :rowData="rowData"
+          :treeData="true"
+          :getDataPath="getDataPath"
+          :groupDefaultExpanded="0"
+          :suppressAutoColumn="true"
+          :gridOptions="gridOptions"
+      />
+    </div>
   </div>
 </template>
 
@@ -127,6 +133,20 @@ const gridOptions = {
 
 const defaultColDef = ref({
   flex: 1,
+})
+
+function toggleEditMode() {
+  isEditMode.value = !isEditMode.value
+}
+
+const gridApi = ref(null)
+
+function onGridReady(params) {
+  gridApi.value = params.api
+}
+
+watch(isEditMode, () => {
+  gridApi.value?.refreshCells({ force: true })
 })
 
 </script>

@@ -1,3 +1,5 @@
+import { reactive } from 'vue'
+
 export interface Item {
   id: number | string
   parent: number | string | null
@@ -5,24 +7,28 @@ export interface Item {
 }
 
 export class ThreeStore {
-  constructor(private items: Item[]) {}
+  private state: { items: Item[] }
+
+  constructor(items: Item[]) {
+    this.state = reactive({ items })
+  }
 
   getAll(): Item[] {
-    return this.items
+    return this.state.items
   }
 
   getItem(id: number | string): Item | undefined {
-    return this.items.find(item => item.id === id)
+    return this.state.items.find(item => item.id === id)
   }
 
   getChildren(id: number | string): Item[] {
-    return this.items.filter(item => item.parent === id)
+    return this.state.items.filter(item => item.parent === id)
   }
 
   getAllChildren(id: number | string): Item[] {
     const result: Item[] = []
     const collect = (parentId: number | string) => {
-      const children = this.items.filter(item => item.parent === parentId)
+      const children = this.state.items.filter(item => item.parent === parentId)
       for (const child of children) {
         result.push(child)
         collect(child.id)
@@ -44,20 +50,21 @@ export class ThreeStore {
   }
 
   addItem(newItem: Item): void {
-    this.items.push(newItem)
+    this.state.items.push(newItem)
   }
 
   removeItem(id: number | string): void {
     const item = this.getItem(id)
     if (!item) return
     const allToRemove = [item, ...this.getAllChildren(id)]
-    this.items = this.items.filter(i => !allToRemove.includes(i))
+
+    this.state.items = this.state.items.filter(i => !allToRemove.includes(i))
   }
 
   updateItem(updated: Item): void {
-    const index = this.items.findIndex(item => item.id === updated.id)
+    const index = this.state.items.findIndex(item => item.id === updated.id)
     if (index !== -1) {
-      this.items[index] = { ...this.items[index], ...updated }
+      this.state.items[index] = { ...this.state.items[index], ...updated }
     }
   }
 }

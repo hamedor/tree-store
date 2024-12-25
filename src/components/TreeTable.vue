@@ -55,7 +55,63 @@ const columnDefs = ref([
     headerName: 'Категория',
     cellRenderer: 'agGroupCellRenderer',
     cellRendererParams: {
-      suppressCount: true
+      suppressCount: true,
+      innerRenderer: (params) => {
+        const value = params.value ?? ''
+
+        const eDiv = document.createElement('div')
+        eDiv.style.display = 'flex'
+        eDiv.style.alignItems = 'center'
+        eDiv.style.justifyContent = 'space-between'
+
+        const eText = document.createElement('span')
+        eText.innerText = value
+        eDiv.appendChild(eText)
+
+        if (isEditMode.value) {
+          const eIcons = document.createElement('div')
+          eIcons.style.display = 'flex'
+          eIcons.style.alignItems = 'center'
+
+          const ePlus = document.createElement('span')
+          ePlus.innerText = ' +'
+          ePlus.style.color = 'green'
+          ePlus.style.cursor = 'pointer'
+          ePlus.style.marginLeft = '8px'
+
+          ePlus.addEventListener('click', (event) => {
+            event.stopPropagation()
+            store.addItem({
+              id: Date.now(),
+              parent: params.data.id,
+              label: 'Новый элемент',
+            })
+            console.log(gridApi.value)
+            gridApi.value?.setGridOption(rowData.value)
+
+
+          })
+
+          const eDelete = document.createElement('span')
+          eDelete.innerText = ' ✕'
+          eDelete.style.color = 'red'
+          eDelete.style.cursor = 'pointer'
+          eDelete.style.marginLeft = '8px'
+
+          eDelete.addEventListener('click', (event) => {
+            event.stopPropagation()
+            store.removeItem(params.data.id)
+            const newData = store.getAll()
+            gridApi.value?.setGridOption("rowData", newData)
+          })
+
+          eIcons.appendChild(ePlus)
+          eIcons.appendChild(eDelete)
+          eDiv.appendChild(eIcons)
+        }
+
+        return eDiv
+      }
     },
   },
   {

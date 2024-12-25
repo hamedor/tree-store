@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import { ThreeStore } from '../modules/TreeStore.ts'
 

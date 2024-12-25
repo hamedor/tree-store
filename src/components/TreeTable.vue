@@ -35,6 +35,8 @@ const store = new ThreeStore([
   { id: 8, parent: 4, label: 'Айтем 8' },
 ])
 
+const isEditMode = ref(false)
+
 const rowData = computed(() => {
   return store.getAll().map(item => {
     const parents = store.getAllParents(item.id).reverse()

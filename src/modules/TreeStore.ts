@@ -9,8 +9,17 @@ export interface Item {
 export class ThreeStore {
   private state: { items: Item[] }
 
+  private nextId: number
+
   constructor(items: Item[]) {
     this.state = reactive({ items })
+
+    const maxExistingId = items.reduce((acc, item) => {
+      const numericId = Number(item.id)
+      return numericId > acc ? numericId : acc
+    }, 0)
+
+    this.nextId = maxExistingId + 1
   }
 
   getAll(): Item[] {
@@ -50,12 +59,17 @@ export class ThreeStore {
   }
 
   addItem(newItem: Item): void {
+    if (newItem.id == null) {
+      newItem.id = this.nextId
+      this.nextId += 1
+    }
     this.state.items.push(newItem)
   }
 
   removeItem(id: number | string): void {
     const item = this.getItem(id)
     if (!item) return
+
     const allToRemove = [item, ...this.getAllChildren(id)]
 
     this.state.items = this.state.items.filter(i => !allToRemove.includes(i))

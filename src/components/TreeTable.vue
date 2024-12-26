@@ -3,6 +3,9 @@
     <button @click="toggleEditMode">
       {{ isEditMode ? 'Режим: редактирование' : 'Режим: просмотр' }}
     </button>
+    <button @click="undo">Undo</button>
+    <button @click="redo">Redo</button>
+
     <div class="ag-theme-alpine" style="width: 100%; height: 600px;">
       <ag-grid-vue
           @grid-ready="onGridReady"
@@ -11,9 +14,10 @@
           :rowData="rowData"
           :treeData="true"
           :getDataPath="getDataPath"
-          :groupDefaultExpanded="0"
+          :groupDefaultExpanded="-1"
           :suppressAutoColumn="true"
           :gridOptions="gridOptions"
+          @cell-value-changed="onCellValueChanged"
       />
     </div>
   </div>
@@ -22,7 +26,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import { ThreeStore } from '../modules/TreeStore.ts'
+import { ThreeStore } from '../modules/TreeStore'
+import { UndoRedoManager } from '../modules/UndoRedoManager'
 
 const store = new ThreeStore([
   { id: 1, parent: null, label: 'Айтем 1' },
@@ -40,7 +45,8 @@ const isEditMode = ref(false)
 const rowData = computed(() => {
   return store.getAll().map(item => {
     const parents = store.getAllParents(item.id).reverse()
-    const path = parents.map(p => p.label)
+    const path = parents.map((p) => `${p.label}__id${p.id}`)
+
     return {
       ...item,
       path,
@@ -49,24 +55,27 @@ const rowData = computed(() => {
   })
 })
 
-const getDataPath = (data: any) => data.path
+const getDataPath = (data: any) => data.path || [data.id]
+
+let undoRedoManager: UndoRedoManager | null = null
 
 const columnDefs = ref([
   {
     field: 'id',
     headerName: '№ п/п',
     width: 100,
-    flex: 0
+    flex: 0,
+    editable: false,
   },
   {
     field: 'category',
     headerName: 'Категория',
     cellRenderer: 'agGroupCellRenderer',
+    editable: false,
     cellRendererParams: {
       suppressCount: true,
       innerRenderer: (params) => {
         const value = params.value ?? ''
-
         const eDiv = document.createElement('div')
         eDiv.style.display = 'flex'
         eDiv.style.alignItems = 'center'
@@ -86,18 +95,17 @@ const columnDefs = ref([
           ePlus.style.color = 'green'
           ePlus.style.cursor = 'pointer'
           ePlus.style.marginLeft = '8px'
+          ePlus.addEventListener('click', () => {
 
-          ePlus.addEventListener('click', (event) => {
-            event.stopPropagation()
-            store.addItem({
-              id: Date.now(),
+
+            const newItem = {
               parent: params.data.id,
               label: 'Новый элемент',
-            })
-            console.log(gridApi.value)
-            gridApi.value?.setGridOption(rowData.value)
+            }
+            store.addItem(newItem)
+            undoRedoManager?.pushAdd(newItem)
 
-
+            gridApi.value?.setGridOption("rowData", store.getAll())
           })
 
           const eDelete = document.createElement('span')
@@ -105,12 +113,15 @@ const columnDefs = ref([
           eDelete.style.color = 'red'
           eDelete.style.cursor = 'pointer'
           eDelete.style.marginLeft = '8px'
+          eDelete.addEventListener('click', () => {
+            const itemToRemove = store.getItem(params.data.id)
+            if (!itemToRemove) return
 
-          eDelete.addEventListener('click', (event) => {
-            event.stopPropagation()
+            const allRemoved = [itemToRemove, ...store.getAllChildren(params.data.id)]
             store.removeItem(params.data.id)
-            const newData = store.getAll()
-            gridApi.value?.setGridOption("rowData", newData)
+
+            undoRedoManager?.pushRemove(allRemoved)
+            gridApi.value?.setGridOption("rowData", store.getAll())
           })
 
           eIcons.appendChild(ePlus)
@@ -121,16 +132,20 @@ const columnDefs = ref([
         return eDiv
       }
     },
+    flex: 1
   },
   {
     headerName: 'Наименование',
     field: 'label',
+    flex: 1,
+    editable: (params) => isEditMode.value,
   }
 ])
 
 const gridOptions = {
   rowGroupPanelShow: 'never',
   groupDisplayType: 'custom',
+  undoRedoCellEditing: false,
 }
 
 const defaultColDef = ref({
@@ -143,14 +158,36 @@ function toggleEditMode() {
 
 const gridApi = ref(null)
 
-function onGridReady(params) {
+function onGridReady(params: any) {
   gridApi.value = params.api
+  undoRedoManager = new UndoRedoManager(store, gridApi.value)
+}
+
+function undo() {
+  undoRedoManager?.undo()
+}
+function redo() {
+  undoRedoManager?.redo()
+}
+
+function onCellValueChanged(params: any) {
+  const { data, oldValue, newValue, colDef } = params
+  if (oldValue === newValue) return
+  if (!undoRedoManager) return
+
+  undoRedoManager.pushCellEdit(data.id, colDef.field, oldValue, newValue)
+
+  store.updateItem({
+    id: data.id,
+    [colDef.field]: newValue
+  })
+
+  gridApi.value?.setGridOption("rowData", store.getAll())
 }
 
 watch(isEditMode, () => {
   gridApi.value?.refreshCells({ force: true })
 })
-
 </script>
 
 <style scoped>

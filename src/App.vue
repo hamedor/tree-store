@@ -1,14 +1,13 @@
-<script setup lang="ts">
-
-
-import TreeTable from "./components/TreeTable.vue";
-</script>
-
 <template>
   <div class="app">
     <TreeTable />
   </div>
 </template>
+
+<script setup lang="ts">
+import TreeTable from "./components/TreeTable.vue";
+
+</script>
 
 <style scoped>
 .app {
